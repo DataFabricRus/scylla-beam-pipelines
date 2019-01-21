@@ -50,8 +50,9 @@ object BulkLoadPipeline {
         override fun expand(input: PCollection<Model>): PCollection<SPOTriple> {
             return input.apply(ParDo.of(object : DoFn<Model, SPOTriple>() {
                 @ProcessElement
-                public fun processElement(@Element element: Model, receiver: OutputReceiver<SPOTriple>) {
-                    element.forEach { receiver.output(SPOTriple(it)) }
+                public fun processElement(c: ProcessContext) {
+                    val element = c.element()
+                    element.forEach { c.output(SPOTriple(it)) }
                 }
             }))
         }

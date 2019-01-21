@@ -58,18 +58,19 @@ object RDF4JIO {
         private class SeparateLineAndFileBasedFormats : DoFn<String, String>() {
 
             @ProcessElement
-            fun processElement(@Element filePattern: String, mor: DoFn.MultiOutputReceiver) {
+            fun processElement(c: ProcessContext) {
+                val filePattern = c.element()
                 val format = Rio.getParserFormatForFileName(filePattern)
 
                 if (format.isPresent) {
                     val f = format.get()
                     if (f == RDFFormat.NTRIPLES) {
-                        mor.get(LINE_BASED).output(filePattern)
+                        c.output(LINE_BASED, filePattern)
                     } else {
-                        mor.get(FILE_BASED).output(filePattern)
+                        c.output(FILE_BASED, filePattern)
                     }
                 } else {
-                    mor.get(FILE_BASED).output(filePattern)
+                    c.output(FILE_BASED, filePattern)
                 }
             }
 
@@ -84,7 +85,8 @@ object RDF4JIO {
         private inner class FileToModel : DoFn<FileIO.ReadableFile, Model>() {
 
             @ProcessElement
-            fun processElement(@Element file: FileIO.ReadableFile, out: DoFn.OutputReceiver<Model>) {
+            fun processElement(c: ProcessContext) {
+                val file = c.element()
                 val resourceId = file.metadata.resourceId()
                 val format = Rio.getParserFormatForFileName(resourceId.filename)
 
@@ -93,7 +95,7 @@ object RDF4JIO {
                         ByteArrayInputStream(file.readFullyAsBytes()).use { bai ->
                             val model = Rio.parse(bai, "", format.get())
 
-                            out.output(model)
+                            c.output(model)
                         }
                     } catch (e: IOException) {
                         LOG.error("Failed to read file [{}]!", file.metadata.resourceId().toString())

@@ -1,5 +1,6 @@
 package cc.datafabric.scylladb.pipelines.transforms
 
+import com.google.common.base.Preconditions.checkArgument
 import org.apache.beam.sdk.transforms.DoFn
 import org.apache.beam.sdk.transforms.PTransform
 import org.apache.beam.sdk.transforms.ParDo
@@ -8,8 +9,6 @@ import org.apache.beam.sdk.values.PCollection
 import org.joda.time.Instant
 import org.slf4j.LoggerFactory
 import java.util.ArrayList
-
-import com.google.common.base.Preconditions.checkArgument
 
 class GroupIntoLocalBatches<T> private constructor(private val batchSize: Long) : PTransform<PCollection<T>, PCollection<Iterable<T>>>() {
 
@@ -26,7 +25,8 @@ class GroupIntoLocalBatches<T> private constructor(private val batchSize: Long) 
             }
 
             @DoFn.ProcessElement
-            fun processElement(@Element element: T, receiver: OutputReceiver<Iterable<@JvmSuppressWildcards T>>) {
+            fun processElement(c: ProcessContext) {
+                val element = c.element()
                 checkArgument(element != null, "Can't batch nulls!")
 
                 batch.add(element)
@@ -37,7 +37,7 @@ class GroupIntoLocalBatches<T> private constructor(private val batchSize: Long) 
                     val outputBatch = batch
                     batch = ArrayList()
 
-                    receiver.outputWithTimestamp(outputBatch, Instant.now())
+                    c.outputWithTimestamp(outputBatch, Instant.now())
                 }
             }
 
