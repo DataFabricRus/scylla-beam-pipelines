@@ -34,11 +34,12 @@ object BulkLoadPipeline {
             .apply(Create.of(options.source))
             .apply("Read triples", RDF4JIO.Read(options.batchSize))
             .apply(ModelToSPOTriple())
-            .apply(CassandraIO
+            .apply("Write rows", CassandraIO
                 .write<SPOTriple>()
                 .withHosts(options.hosts.split(","))
                 .withPort(options.port)
                 .withKeyspace(options.keyspace)
+                .withConsistencyLevel("ANY")
                 .withEntity(SPOTriple::class.java)
             )
 
@@ -69,9 +70,10 @@ object BulkLoadPipeline {
         options.gcpTempLocation = "gs://datafabric-dataflow/staging"
         options.runner = Class.forName("org.apache.beam.runners.dataflow.DataflowRunner") as Class<PipelineRunner<*>>
 //        options.setRunner((Class<PipelineRunner<?>>) Class.forName("org.apache.beam.runners.direct.DirectRunner"));
-        options.maxNumWorkers = 5
+        options.maxNumWorkers = 30
+        options.numWorkers = 30
 
-        options.hosts = "10.132.0.29"
+        options.hosts = "10.132.0.29,10.132.0.40"
         options.port = 9042
         options.keyspace = "triplestore"
 
@@ -81,11 +83,7 @@ object BulkLoadPipeline {
 //                "gs://fibo-rdf/rosstat-2013/*.nt,gs://fibo-rdf/rosstat-2014/*.nt,gs://fibo-rdf/rosstat-2015/*.nt," +
 //                "gs://fibo-rdf/rosstat-2016/*.nt,gs://fibo-rdf/rosstat/*,gs://fibo-rdf/ui/*"
         options.source =
-//            "gs://fibo-rdf/addresses/*.nt,gs://fibo-rdf/fibo-ru-activities/*,gs://fibo-rdf/fibo-ru/*," +
-//            "gs://fibo-rdf/foreignle/*.nt,gs://fibo-rdf/gov/*.nt,gs://fibo-rdf/individuals/*.nt," +
-//            "gs://fibo-rdf/le/*.nt,gs://fibo-rdf/people/*.nt,gs://fibo-rdf/pif/*.nt,gs://fibo-rdf/rosstat-2012/*.nt," +
-            "gs://fibo-rdf/rosstat-2013/*.nt,gs://fibo-rdf/rosstat-2014/*.nt,gs://fibo-rdf/rosstat-2015/*.nt"
-//            "gs://fibo-rdf/rosstat-2016/*.nt,gs://fibo-rdf/rosstat/*,gs://fibo-rdf/ui/*"
+            "gs://fibo-rdf/rosstat-2013/*.nt"
         options.batchSize = 500000
 
         BulkLoadPipeline.create(options).run()

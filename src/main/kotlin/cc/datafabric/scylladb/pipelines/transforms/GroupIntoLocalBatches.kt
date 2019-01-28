@@ -17,12 +17,12 @@ class GroupIntoLocalBatches<T> private constructor(private val batchSize: Long) 
         return input.apply(ParDo.of(object : DoFn<T, Iterable<@JvmSuppressWildcards T>>() {
 
             @Transient
-            private var batch: MutableList<T> = ArrayList()
+            private var batch: MutableList<T> = newBatch()
 
             @DoFn.StartBundle
             fun startBundle() {
                 LOG.debug("Start up batch")
-                batch = ArrayList()
+                batch = newBatch()
             }
 
             @DoFn.ProcessElement
@@ -35,7 +35,7 @@ class GroupIntoLocalBatches<T> private constructor(private val batchSize: Long) 
                     LOG.debug("Flush batch on the threshold")
 
                     val outputBatch = batch
-                    batch = ArrayList()
+                    batch = newBatch()
 
                     receiver.outputWithTimestamp(outputBatch, Instant.now())
                 }
@@ -46,9 +46,13 @@ class GroupIntoLocalBatches<T> private constructor(private val batchSize: Long) 
                 LOG.debug("Flush batch on finished bundle")
 
                 val outputBatch = batch
-                batch = ArrayList()
+                batch = newBatch()
 
                 ctx.output(outputBatch, Instant.now(), GlobalWindow.INSTANCE)
+            }
+
+            private fun <T> newBatch(): MutableList<T> {
+                return ArrayList(batchSize.toInt())
             }
 
         }))
