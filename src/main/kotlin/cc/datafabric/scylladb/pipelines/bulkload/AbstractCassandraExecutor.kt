@@ -1,5 +1,6 @@
 package cc.datafabric.scylladb.pipelines.bulkload
 
+import cc.datafabric.scyllardf.coder.CoderFacade
 import cc.datafabric.scyllardf.dao.ScyllaRDFDAO
 import com.datastax.driver.core.ResultSetFuture
 import com.google.common.util.concurrent.Futures
@@ -15,12 +16,16 @@ open class AbstractCassandraExecutor<T>(
     }
 
     protected lateinit var dao: ScyllaRDFDAO
+    protected lateinit var coder: CoderFacade
 
     private var batch = newBatch()
 
     @Setup
     public open fun setup() {
         dao = ScyllaRDFDAO.create(hosts.map { InetAddress.getByName(it) }, port, keyspace)
+
+        coder = CoderFacade
+        coder.initialize(dao)
     }
 
     @FinishBundle

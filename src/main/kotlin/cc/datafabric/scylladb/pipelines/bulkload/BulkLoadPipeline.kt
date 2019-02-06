@@ -71,7 +71,7 @@ object BulkLoadPipeline {
 //                "gs://fibo-rdf/le/*.nt,gs://fibo-rdf/people/*.nt,gs://fibo-rdf/pif/*.nt,gs://fibo-rdf/rosstat-2012/*.nt," +
 //                "gs://fibo-rdf/rosstat-2013/*.nt,gs://fibo-rdf/rosstat-2014/*.nt,gs://fibo-rdf/rosstat-2015/*.nt," +
 //                "gs://fibo-rdf/rosstat-2016/*.nt,gs://fibo-rdf/rosstat/*,gs://fibo-rdf/ui/*"
-        options.source = "gs://fibo-rdf/fibo-ru/*"
+        options.source = "gs://fibo-rdf/le/le-01992-of-03159.nt"
         options.batchSize = 500000
 
         BulkLoadPipeline.create(options).run()

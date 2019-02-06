@@ -1,6 +1,5 @@
 package cc.datafabric.scylladb.pipelines.bulkload
 
-import cc.datafabric.scyllardf.dao.Coder
 import org.apache.beam.sdk.transforms.PTransform
 import org.apache.beam.sdk.transforms.ParDo
 import org.apache.beam.sdk.values.PCollection
@@ -92,7 +91,7 @@ class ModelToIndex(private val hosts: List<String>, private val port: Int, priva
         @ProcessElement
         public fun processElement(@Element element: Model) {
             element.forEach {
-                val spoc = Coder.encode(it)
+                val spoc = coder.encode(it)
 
                 add(dao.insertInSPOC(spoc[0], spoc[1], spoc[2], spoc[3]))
             }
@@ -105,7 +104,7 @@ class ModelToIndex(private val hosts: List<String>, private val port: Int, priva
         @ProcessElement
         public fun processElement(@Element element: Model) {
             element.forEach {
-                val spoc = Coder.encode(it)
+                val spoc = coder.encode(it)
 
                 add(dao.insertInPOSC(spoc[0], spoc[1], spoc[2], spoc[3]))
             }
@@ -118,7 +117,7 @@ class ModelToIndex(private val hosts: List<String>, private val port: Int, priva
         @ProcessElement
         public fun processElement(@Element element: Model) {
             element.forEach {
-                val spoc = Coder.encode(it)
+                val spoc = coder.encode(it)
 
                 add(dao.insertInOSPC(spoc[0], spoc[1], spoc[2], spoc[3]))
             }
@@ -133,7 +132,7 @@ class ModelToIndex(private val hosts: List<String>, private val port: Int, priva
             element
                 .filter { stmt -> stmt.context != null }
                 .forEach {
-                    val spoc = Coder.encode(it)
+                    val spoc = coder.encode(it)
 
                     add(dao.insertInCSPO(spoc[0], spoc[1], spoc[2], spoc[3]))
                 }
@@ -148,7 +147,7 @@ class ModelToIndex(private val hosts: List<String>, private val port: Int, priva
             element
                 .filter { stmt -> stmt.context != null }
                 .forEach {
-                    val spoc = Coder.encode(it)
+                    val spoc = coder.encode(it)
 
                     add(dao.insertInCPOS(spoc[0], spoc[1], spoc[2], spoc[3]))
                 }
@@ -163,7 +162,7 @@ class ModelToIndex(private val hosts: List<String>, private val port: Int, priva
             element
                 .filter { stmt -> stmt.context != null }
                 .forEach {
-                    val spoc = Coder.encode(it)
+                    val spoc = coder.encode(it)
 
                     add(dao.insertInCOSP(spoc[0], spoc[1], spoc[2], spoc[3]))
                 }
@@ -176,7 +175,7 @@ class ModelToIndex(private val hosts: List<String>, private val port: Int, priva
         @ProcessElement
         public fun processElement(@Element element: Model) {
             for (stmt in element) {
-                val spoc = Coder.encode(stmt)
+                val spoc = coder.encode(stmt)
 
                 add(dao.incrementStatistics(spoc[0], spoc[1], spoc[2], spoc[3]))
             }
