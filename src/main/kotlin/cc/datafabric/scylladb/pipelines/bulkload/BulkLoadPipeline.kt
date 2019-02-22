@@ -19,7 +19,7 @@ object BulkLoadPipeline {
 
     private const val HOSTS_SEPARATOR = ","
 
-    fun create(options: BulkLoadPipelineOptions): Pipeline {
+    private fun create(options: BulkLoadPipelineOptions): Pipeline {
         val p = Pipeline.create(options)
 
         p.coderRegistry.registerCoderForClass(RDFFormat::class.java, RDFFormatCoder.of())
@@ -55,8 +55,8 @@ object BulkLoadPipeline {
         options.jobName = "scylladb-bulkload"
         options.project = "core-datafabric"
         options.region = "europe-west1"
-//        options.tempLocation = "gs://datafabric-dataflow/temp"
-//        options.gcpTempLocation = "gs://datafabric-dataflow/staging"
+        options.tempLocation = "gs://datafabric-dataflow/temp"
+        options.gcpTempLocation = "gs://datafabric-dataflow/staging"
 //        options.runner = Class.forName("org.apache.beam.runners.dataflow.DataflowRunner") as Class<PipelineRunner<*>>
         options.runner = Class.forName("org.apache.beam.runners.direct.DirectRunner") as Class<PipelineRunner<*>>
         options.maxNumWorkers = 1
@@ -71,7 +71,8 @@ object BulkLoadPipeline {
 //                "gs://fibo-rdf/le/*.nt,gs://fibo-rdf/people/*.nt,gs://fibo-rdf/pif/*.nt,gs://fibo-rdf/rosstat-2012/*.nt," +
 //                "gs://fibo-rdf/rosstat-2013/*.nt,gs://fibo-rdf/rosstat-2014/*.nt,gs://fibo-rdf/rosstat-2015/*.nt," +
 //                "gs://fibo-rdf/rosstat-2016/*.nt,gs://fibo-rdf/rosstat/*,gs://fibo-rdf/ui/*"
-        options.source = "gs://fibo-rdf/le/le-01992-of-03159.nt"
+//        options.source = "gs://fibo-rdf/le/le-01992-of-03159.nt"
+        options.source = "gs://scylla-rdf-benchmark/dataset.nt"
         options.batchSize = 500000
 
         BulkLoadPipeline.create(options).run()

@@ -11,7 +11,8 @@ import java.util.ArrayList
 
 import com.google.common.base.Preconditions.checkArgument
 
-class GroupIntoLocalBatches<T> private constructor(private val batchSize: Long) : PTransform<PCollection<T>, PCollection<Iterable<T>>>() {
+class GroupIntoLocalBatches<T> private constructor(private val batchSize: Long)
+    : PTransform<PCollection<T>, PCollection<Iterable<T>>>() {
 
     override fun expand(input: PCollection<T>): PCollection<Iterable<T>> {
         return input.apply(ParDo.of(object : DoFn<T, Iterable<@JvmSuppressWildcards T>>() {
