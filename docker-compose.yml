@@ -1,7 +1,6 @@
 version: "3"
 services:
   scylla-rdf-pipelines:
-    build: ./
     image: datafabricrus/scylla-rdf-pipelines:0.0.1
     environment:
       - SCYLLA_RDF_STORAGE_HOSTS=scylla # E.g. 10.0.0.1,10.0.0.1
