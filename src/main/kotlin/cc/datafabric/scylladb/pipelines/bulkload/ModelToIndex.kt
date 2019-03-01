@@ -1,6 +1,14 @@
 package cc.datafabric.scylladb.pipelines.bulkload
 
 import cc.datafabric.scyllardf.dao.ScyllaRDFSchema
+import org.apache.beam.sdk.coders.ByteArrayCoder
+import org.apache.beam.sdk.coders.ByteCoder
+import org.apache.beam.sdk.coders.Coder
+import org.apache.beam.sdk.coders.KvCoder
+import org.apache.beam.sdk.coders.ListCoder
+import org.apache.beam.sdk.coders.SerializableCoder
+import org.apache.beam.sdk.coders.StructuredCoder
+import org.apache.beam.sdk.coders.VarLongCoder
 import org.apache.beam.sdk.transforms.PTransform
 import org.apache.beam.sdk.transforms.ParDo
 import org.apache.beam.sdk.transforms.Sum
@@ -8,19 +16,21 @@ import org.apache.beam.sdk.values.KV
 import org.apache.beam.sdk.values.PCollection
 import org.apache.beam.sdk.values.PDone
 import org.eclipse.rdf4j.model.Model
+import java.io.InputStream
+import java.io.OutputStream
+import java.io.Serializable
 import java.nio.ByteBuffer
+import java.util.Arrays
+import java.util.Collections
+import java.util.Objects
 
 class ModelToIndex(private val hosts: List<String>, private val port: Int, private val keyspace: String) {
 
     companion object {
 
-        private const val STAT_C_ID: Byte = 0
-        private const val STAT_S_ID: Byte = 1
-        private const val STAT_P_ID: Byte = 2
-        private const val STAT_O_ID: Byte = 3
-        private const val STAT_SP_ID: Byte = 4
-        private const val STAT_PO_ID: Byte = 5
-        private const val STAT_SO_ID: Byte = 6
+        private const val CARD_C_ID: Byte = 0
+        private const val CARD_P_ID: Byte = 1
+        private const val CARD_PO_ID: Byte = 2
 
     }
 
@@ -96,6 +106,7 @@ class ModelToIndex(private val hosts: List<String>, private val port: Int, priva
 
                 input
                     .apply(ParDo.of(STATIndexToKV(hosts, port, keyspace)))
+                    .setCoder(KvCoder.of(CardKeyCoder(), VarLongCoder.of()))
                     .apply(Sum.longsPerKey())
                     .apply(ParDo.of(STATIndexWriterDoFn(hosts, port, keyspace)))
 
@@ -112,7 +123,7 @@ class ModelToIndex(private val hosts: List<String>, private val port: Int, priva
             element.forEach {
                 val spoc = coder.encode(it)
 
-                dao.insertInSPOC(spoc[0], spoc[1], spoc[2], spoc[3])
+                indexDAO.insertInSPOC(spoc[0], spoc[1], spoc[2], spoc[3])
             }
         }
     }
@@ -125,7 +136,7 @@ class ModelToIndex(private val hosts: List<String>, private val port: Int, priva
             element.forEach {
                 val spoc = coder.encode(it)
 
-                dao.insertInPOSC(spoc[0], spoc[1], spoc[2], spoc[3])
+                indexDAO.insertInPOSC(spoc[0], spoc[1], spoc[2], spoc[3])
             }
         }
     }
@@ -138,7 +149,7 @@ class ModelToIndex(private val hosts: List<String>, private val port: Int, priva
             element.forEach {
                 val spoc = coder.encode(it)
 
-                dao.insertInOSPC(spoc[0], spoc[1], spoc[2], spoc[3])
+                indexDAO.insertInOSPC(spoc[0], spoc[1], spoc[2], spoc[3])
             }
         }
     }
@@ -153,7 +164,7 @@ class ModelToIndex(private val hosts: List<String>, private val port: Int, priva
                 .forEach {
                     val spoc = coder.encode(it)
 
-                    dao.insertInCSPO(spoc[0], spoc[1], spoc[2], spoc[3])
+                    indexDAO.insertInCSPO(spoc[0], spoc[1], spoc[2], spoc[3])
                 }
         }
     }
@@ -168,7 +179,7 @@ class ModelToIndex(private val hosts: List<String>, private val port: Int, priva
                 .forEach {
                     val spoc = coder.encode(it)
 
-                    dao.insertInCPOS(spoc[0], spoc[1], spoc[2], spoc[3])
+                    indexDAO.insertInCPOS(spoc[0], spoc[1], spoc[2], spoc[3])
                 }
         }
     }
@@ -183,77 +194,108 @@ class ModelToIndex(private val hosts: List<String>, private val port: Int, priva
                 .forEach {
                     val spoc = coder.encode(it)
 
-                    dao.insertInCOSP(spoc[0], spoc[1], spoc[2], spoc[3])
+                    indexDAO.insertInCOSP(spoc[0], spoc[1], spoc[2], spoc[3])
                 }
         }
     }
 
     class STATIndexToKV(hosts: List<String>, port: Int, keyspace: String)
-        : AbstractCassandraExecutor<Model, KV<ByteArray, Long>>(hosts, port, keyspace) {
+        : AbstractCassandraExecutor<Model, KV<CardKey, Long>>(hosts, port, keyspace) {
 
         @ProcessElement
-        public fun processElement(@Element element: Model, receiver: OutputReceiver<KV<ByteArray, Long>>) {
+        public fun processElement(@Element element: Model, receiver: OutputReceiver<KV<CardKey, Long>>) {
             element.forEach { stmt ->
-                if(stmt.context == null) {
-                    receiver.output(KV.of(concat(STAT_C_ID, ScyllaRDFSchema.CONTEXT_DEFAULT), 1L))
+                if (stmt.context == null) {
+                    receiver.output(KV.of(CardKey(CARD_C_ID, ScyllaRDFSchema.CONTEXT_DEFAULT), 1L))
                 } else {
-                    receiver.output(KV.of(concat(STAT_C_ID, coder.encode(stmt.context)!!), 1L))
+                    receiver.output(KV.of(CardKey(CARD_C_ID, coder.encode(stmt.context)!!), 1L))
                 }
 
-                receiver.output(KV.of(concat(STAT_S_ID, coder.encode(stmt.subject)!!), 1L))
-                receiver.output(KV.of(concat(STAT_P_ID, coder.encode(stmt.predicate)!!), 1L))
-                receiver.output(KV.of(concat(STAT_O_ID, coder.encode(stmt.`object`)!!), 1L))
-
-                receiver.output(KV.of(concat(STAT_SP_ID, coder.encode(stmt.subject)!!, coder.encode(stmt.predicate)!!), 1L))
-                receiver.output(KV.of(concat(STAT_PO_ID, coder.encode(stmt.predicate)!!, coder.encode(stmt.`object`)!!), 1L))
-                receiver.output(KV.of(concat(STAT_SO_ID, coder.encode(stmt.subject)!!, coder.encode(stmt.`object`)!!), 1L))
+                receiver.output(KV.of(CardKey(CARD_P_ID, coder.encode(stmt.predicate)!!), 1L))
+                receiver.output(KV.of(CardKey(CARD_PO_ID, coder.encode(stmt.predicate)!!, coder.encode(stmt.`object`)!!), 1L))
             }
-        }
-
-        private fun concat(a: Byte, b: ByteBuffer) : ByteArray {
-            val arr = ByteArray(1 + b.array().size)
-
-            arr[0] = a;
-            System.arraycopy(b.array(), 0, arr, 1, b.array().size)
-
-            return arr
-        }
-
-        private fun concat(a: Byte, b: ByteBuffer, c: ByteBuffer) : ByteArray {
-            val arr = ByteArray(1 + b.array().size + c.array().size)
-
-            arr[0] = a;
-            System.arraycopy(b.array(), 0, arr, 1, b.array().size)
-            System.arraycopy(c.array(), 0, arr, 1 + b.array().size, c.array().size)
-
-            return arr
         }
 
     }
 
     class STATIndexWriterDoFn(hosts: List<String>, port: Int, keyspace: String)
-        : AbstractCassandraExecutor<KV<ByteArray, Long>, Boolean>(hosts, port, keyspace) {
+        : AbstractCassandraExecutor<KV<CardKey, Long>, Boolean>(hosts, port, keyspace) {
 
         @ProcessElement
-        public fun processElement(@Element element: KV<ByteArray, Long>) {
-            val statTypeId = element.key!![0]
+        public fun processElement(@Element element: KV<CardKey, Long>) {
+            val key = element.key!!
 
-            val id = ByteBuffer.allocate(element.key!!.size - 1)
-            id.put(element.key!!, 1, element.key!!.size - 1)
-            id.rewind()
-
-            when (statTypeId) {
-                STAT_C_ID -> batch(dao.incrementStatCBy(id, element.value))
-                STAT_S_ID -> batch(dao.incrementStatSBy(id, element.value))
-                STAT_P_ID -> batch(dao.incrementStatPBy(id, element.value))
-                STAT_O_ID -> batch(dao.incrementStatOBy(id, element.value))
-                STAT_SP_ID -> batch(dao.incrementStatSPBy(id, element.value))
-                STAT_PO_ID -> batch(dao.incrementStatPOBy(id, element.value))
-                STAT_SO_ID -> batch(dao.incrementStatSOBy(id, element.value))
+            when (key.type) {
+                CARD_C_ID -> batch(cardinalityDao.incrementCardC(key.ids[0], element.value))
+                CARD_P_ID -> batch(cardinalityDao.incrementCardP(key.ids[0], element.value))
+                CARD_PO_ID -> batch(cardinalityDao.incrementCardPO(key.ids[0], key.ids[1], element.value))
                 else -> throw IllegalArgumentException()
             }
         }
 
     }
 
+    class CardKey : Serializable {
+
+        val type: Byte
+        val ids: Array<ByteBuffer>
+
+        constructor(type: Byte, id1: ByteBuffer) {
+            this.type = type
+            this.ids = arrayOf(id1)
+        }
+
+        constructor(idType: Byte, id1: ByteBuffer, id2: ByteBuffer) {
+            this.type = idType
+            this.ids = arrayOf(id1, id2)
+        }
+
+        constructor(type: Byte, ids: Array<ByteBuffer>) {
+            this.type = type
+            this.ids = ids
+        }
+
+        override fun equals(other: Any?): Boolean {
+            if (other is CardKey) {
+                return this.type == other.type && Arrays.deepEquals(this.ids, other.ids)
+            }
+
+            return false
+        }
+
+        override fun hashCode(): Int {
+            return type.hashCode() + Objects.hash(*ids)
+        }
+
+    }
+
+    class CardKeyCoder : StructuredCoder<CardKey>() {
+
+        private val byteCoder = ByteCoder.of()
+        private val byteArrayCoder = ByteArrayCoder.of()
+        private val arrayCoder = ListCoder.of(byteArrayCoder)
+
+        override fun getCoderArguments(): MutableList<out Coder<*>> {
+            return Collections.emptyList()
+        }
+
+        override fun verifyDeterministic() {
+            byteCoder.verifyDeterministic()
+            byteArrayCoder.verifyDeterministic()
+            arrayCoder.verifyDeterministic()
+        }
+
+        override fun encode(value: CardKey, outStream: OutputStream?) {
+            byteCoder.encode(value.type, outStream)
+
+            val arr = value.ids.map { it.array() }.toMutableList()
+            arrayCoder.encode(arr, outStream)
+        }
+
+        override fun decode(inStream: InputStream): CardKey {
+            val type = byteCoder.decode(inStream)
+            val ids = arrayCoder.decode(inStream).map { ByteBuffer.wrap(it) }.toTypedArray()
+            return CardKey(type, ids)
+        }
+    }
 }

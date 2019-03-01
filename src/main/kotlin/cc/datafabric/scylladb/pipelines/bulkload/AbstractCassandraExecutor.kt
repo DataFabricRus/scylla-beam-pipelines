@@ -1,7 +1,9 @@
 package cc.datafabric.scylladb.pipelines.bulkload
 
 import cc.datafabric.scyllardf.coder.CoderFacade
-import cc.datafabric.scyllardf.dao.ScyllaRDFDAO
+import cc.datafabric.scyllardf.dao.ICardinalityDAO
+import cc.datafabric.scyllardf.dao.IIndexDAO
+import cc.datafabric.scyllardf.dao.impl.ScyllaRDFDAOFactory
 import com.datastax.driver.core.HostDistance
 import com.datastax.driver.core.PoolingOptions
 import com.datastax.driver.core.ResultSetFuture
@@ -20,19 +22,24 @@ open class AbstractCassandraExecutor<InputT, OutputT>(
         private val LOG = LoggerFactory.getLogger(AbstractCassandraExecutor::class.java)
     }
 
-    protected lateinit var dao: ScyllaRDFDAO
+    private lateinit var daoFactory: ScyllaRDFDAOFactory
+    protected lateinit var cardinalityDao: ICardinalityDAO
+    protected lateinit var indexDAO: IIndexDAO
     protected lateinit var coder: CoderFacade
 
     private var batch = newBatch()
 
     @Setup
     public open fun setup() {
-        dao = ScyllaRDFDAO.create(hosts.map { InetAddress.getByName(it) }, port, keyspace, PoolingOptions()
+        daoFactory = ScyllaRDFDAOFactory.create(hosts.map { InetAddress.getByName(it) }, port, keyspace, PoolingOptions()
             .setMaxRequestsPerConnection(HostDistance.LOCAL, MAX_BATCH_SIZE)
         )
 
         coder = CoderFacade
-        coder.initialize(dao)
+        coder.initialize(daoFactory.getDictionaryDAO())
+
+        cardinalityDao = daoFactory.getCardinalityDAO()
+        indexDAO = daoFactory.getIndexDAO()
     }
 
     @FinishBundle
@@ -42,7 +49,7 @@ open class AbstractCassandraExecutor<InputT, OutputT>(
 
     @Teardown
     public fun tearDown() {
-        dao.close()
+        daoFactory.close()
     }
 
     protected fun batch(future: ResultSetFuture) {

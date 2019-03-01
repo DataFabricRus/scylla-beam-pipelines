@@ -1,8 +1,8 @@
 package cc.datafabric.scylladb.pipelines.bulkload
 
-import org.apache.beam.runners.dataflow.options.DataflowPipelineOptions
+import org.apache.beam.sdk.options.PipelineOptions
 
-interface DefaultCassandraPipelineOptions : DataflowPipelineOptions {
+interface DefaultCassandraPipelineOptions : PipelineOptions {
     var hosts: String
     var port: Int
     var keyspace: String
