@@ -6,11 +6,11 @@
 
     <groupId>cc.datafabric</groupId>
     <artifactId>scylladb-pipelines</artifactId>
-    <version>1.0-SNAPSHOT</version>
+    <version>0.0.1-SNAPSHOT</version>
 
     <properties>
         <apache.beam.version>2.10.0</apache.beam.version>
-        <rdf4j.version>2.4.3</rdf4j.version>
+        <rdf4j.version>2.5.0</rdf4j.version>
         <slf4j.version>1.7.25</slf4j.version>
         <kotlin.version>1.3.21</kotlin.version>
         <kotlin.compiler.incremental>true</kotlin.compiler.incremental>
@@ -95,7 +95,7 @@
         <dependency>
             <groupId>cc.datafabric.scyllardf</groupId>
             <artifactId>sail</artifactId>
-            <version>1.0-SNAPSHOT</version>
+            <version>${project.version}</version>
         </dependency>
 
         <dependency>
@@ -112,7 +112,7 @@
 
     <build>
         <sourceDirectory>${project.basedir}/src/main/kotlin</sourceDirectory>
-        <testSourceDirectory>${project.basedir}/src/test/kotlin</testSourceDirectory>
+        <!--<testSourceDirectory>${project.basedir}/src/test/kotlin</testSourceDirectory>-->
 
         <plugins>
             <plugin>

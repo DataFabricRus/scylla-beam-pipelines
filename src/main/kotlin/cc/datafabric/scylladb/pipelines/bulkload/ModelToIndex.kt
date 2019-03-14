@@ -6,7 +6,6 @@ import org.apache.beam.sdk.coders.ByteCoder
 import org.apache.beam.sdk.coders.Coder
 import org.apache.beam.sdk.coders.KvCoder
 import org.apache.beam.sdk.coders.ListCoder
-import org.apache.beam.sdk.coders.SerializableCoder
 import org.apache.beam.sdk.coders.StructuredCoder
 import org.apache.beam.sdk.coders.VarLongCoder
 import org.apache.beam.sdk.transforms.PTransform

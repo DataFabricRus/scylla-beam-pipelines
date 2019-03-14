@@ -1,7 +1,7 @@
 package cc.datafabric.scylladb.pipelines.bulkload
 
 import cc.datafabric.scylladb.pipelines.coders.RDF4JModelCoder
-import cc.datafabric.scylladb.pipelines.coders.RDFFormatCoder
+import cc.datafabric.scylladb.pipelines.coders.RDF4JRDFFormatCoder
 import cc.datafabric.scylladb.pipelines.io.RDF4JIO
 import org.apache.beam.sdk.Pipeline
 import org.apache.beam.sdk.options.PipelineOptionsFactory
@@ -9,7 +9,7 @@ import org.apache.beam.sdk.transforms.Create
 import org.eclipse.rdf4j.model.Model
 import org.eclipse.rdf4j.rio.RDFFormat
 
-interface BulkLoadPipelineOptions : DefaultCassandraPipelineOptions {
+interface BulkLoadPipelineOptions : DefaultCassandraPipelineOptions, DefaultElasticsearchPipelineOptions {
     var source: String
     var batchSize: Long
 }
@@ -21,7 +21,7 @@ object BulkLoadPipeline {
     private fun create(options: BulkLoadPipelineOptions): Pipeline {
         val p = Pipeline.create(options)
 
-        p.coderRegistry.registerCoderForClass(RDFFormat::class.java, RDFFormatCoder.of())
+        p.coderRegistry.registerCoderForClass(RDFFormat::class.java, RDF4JRDFFormatCoder.of())
         p.coderRegistry.registerCoderForClass(Model::class.java, RDF4JModelCoder.of())
 
         val modelToIndex = ModelToIndex(options.hosts.split(HOSTS_SEPARATOR), options.port, options.keyspace)
@@ -43,6 +43,10 @@ object BulkLoadPipeline {
         models.apply("Write COSP Index", modelToIndex.toCOSP())
 
         models.apply("Write STAT Indexes", modelToIndex.toSTAT())
+
+        models.apply("Write Elasticsearch Index", ModelToElasticsearchIndex(
+            options.elasticsearchHost, options.elasticsearchBatchSize
+        ))
 
         return p
     }

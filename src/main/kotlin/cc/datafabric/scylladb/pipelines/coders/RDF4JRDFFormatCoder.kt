@@ -10,7 +10,7 @@ import java.io.InputStream
 import java.io.OutputStream
 import java.util.Arrays
 
-class RDFFormatCoder private constructor() : StructuredCoder<RDFFormat>() {
+class RDF4JRDFFormatCoder private constructor() : StructuredCoder<RDFFormat>() {
 
     private val stringCoder = StringUtf8Coder.of()
 
@@ -23,7 +23,7 @@ class RDFFormatCoder private constructor() : StructuredCoder<RDFFormat>() {
     override fun decode(inStream: InputStream): RDFFormat {
         val name = stringCoder.decode(inStream)
         val found = RDF_FORMATS.parallelStream()
-            .filter { it -> it.name.equals(name, ignoreCase = true) }
+            .filter { it.name.equals(name, ignoreCase = true) }
             .findFirst()
 
         return if (found.isPresent) {
@@ -39,13 +39,13 @@ class RDFFormatCoder private constructor() : StructuredCoder<RDFFormat>() {
 
     @Throws(Coder.NonDeterministicException::class)
     override fun verifyDeterministic() {
-
+        stringCoder.verifyDeterministic()
     }
 
     companion object {
 
         private val RDF_FORMATS = Arrays.asList(RDFFormat.NTRIPLES, RDFFormat.NQUADS)
-        private val INSTANCE = RDFFormatCoder()
+        private val INSTANCE = RDF4JRDFFormatCoder()
 
         fun of(): Coder<RDFFormat> {
             return INSTANCE
