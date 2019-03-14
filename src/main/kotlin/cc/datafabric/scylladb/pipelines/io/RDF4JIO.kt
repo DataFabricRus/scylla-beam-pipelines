@@ -61,6 +61,8 @@ object RDF4JIO {
             fun processElement(@Element filePattern: String, mor: DoFn.MultiOutputReceiver) {
                 val format = Rio.getParserFormatForFileName(filePattern)
 
+                LOG.info("{} is in {}", filePattern, format.get().name)
+
                 if (format.isPresent) {
                     val f = format.get()
                     if (f == RDFFormat.NTRIPLES) {

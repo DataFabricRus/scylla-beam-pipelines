@@ -123,7 +123,7 @@ class ModelToIndex(private val hosts: List<String>, private val port: Int, priva
             element.forEach {
                 val spoc = coder.encode(it)
 
-                indexDAO.insertInSPOC(spoc[0], spoc[1], spoc[2], spoc[3])
+                batch(indexDAO.insertInSPOC(spoc[0], spoc[1], spoc[2], spoc[3]))
             }
         }
     }
@@ -136,7 +136,7 @@ class ModelToIndex(private val hosts: List<String>, private val port: Int, priva
             element.forEach {
                 val spoc = coder.encode(it)
 
-                indexDAO.insertInPOSC(spoc[0], spoc[1], spoc[2], spoc[3])
+                batch(indexDAO.insertInPOSC(spoc[0], spoc[1], spoc[2], spoc[3]))
             }
         }
     }
@@ -149,7 +149,7 @@ class ModelToIndex(private val hosts: List<String>, private val port: Int, priva
             element.forEach {
                 val spoc = coder.encode(it)
 
-                indexDAO.insertInOSPC(spoc[0], spoc[1], spoc[2], spoc[3])
+                batch(indexDAO.insertInOSPC(spoc[0], spoc[1], spoc[2], spoc[3]))
             }
         }
     }
@@ -164,7 +164,7 @@ class ModelToIndex(private val hosts: List<String>, private val port: Int, priva
                 .forEach {
                     val spoc = coder.encode(it)
 
-                    indexDAO.insertInCSPO(spoc[0], spoc[1], spoc[2], spoc[3])
+                    batch(indexDAO.insertInCSPO(spoc[0], spoc[1], spoc[2], spoc[3]))
                 }
         }
     }
@@ -179,7 +179,7 @@ class ModelToIndex(private val hosts: List<String>, private val port: Int, priva
                 .forEach {
                     val spoc = coder.encode(it)
 
-                    indexDAO.insertInCPOS(spoc[0], spoc[1], spoc[2], spoc[3])
+                    batch(indexDAO.insertInCPOS(spoc[0], spoc[1], spoc[2], spoc[3]))
                 }
         }
     }
@@ -194,7 +194,7 @@ class ModelToIndex(private val hosts: List<String>, private val port: Int, priva
                 .forEach {
                     val spoc = coder.encode(it)
 
-                    indexDAO.insertInCOSP(spoc[0], spoc[1], spoc[2], spoc[3])
+                    batch(indexDAO.insertInCOSP(spoc[0], spoc[1], spoc[2], spoc[3]))
                 }
         }
     }
