@@ -13,12 +13,13 @@ import org.slf4j.LoggerFactory
 import java.net.InetAddress
 
 open class AbstractCassandraExecutor<InputT, OutputT>(
-    private val hosts: List<String>, private val port: Int, protected val keyspace: String
+    private val hosts: List<String>,
+    private val port: Int,
+    private val keyspace: String,
+    private val maxRequestsPerConnection: Int
 ) : DoFn<InputT, OutputT>() {
 
     companion object {
-        private const val MAX_BATCH_SIZE = 512
-
         private val LOG = LoggerFactory.getLogger(AbstractCassandraExecutor::class.java)
     }
 
@@ -32,7 +33,7 @@ open class AbstractCassandraExecutor<InputT, OutputT>(
     @Setup
     public open fun setup() {
         daoFactory = ScyllaRDFDAOFactory.create(hosts.map { InetAddress.getByName(it) }, port, keyspace, PoolingOptions()
-            .setMaxRequestsPerConnection(HostDistance.LOCAL, MAX_BATCH_SIZE)
+            .setMaxRequestsPerConnection(HostDistance.LOCAL, maxRequestsPerConnection)
         )
 
         coder = CoderFacade
@@ -65,7 +66,7 @@ open class AbstractCassandraExecutor<InputT, OutputT>(
     }
 
     private fun checkBatchSize() {
-        if (batch.size > MAX_BATCH_SIZE) {
+        if (batch.size > maxRequestsPerConnection) {
             Futures.allAsList(batch).get()
 
             batch = newBatch()
@@ -73,7 +74,7 @@ open class AbstractCassandraExecutor<InputT, OutputT>(
     }
 
     private fun newBatch(): MutableList<ResultSetFuture> {
-        return ArrayList(MAX_BATCH_SIZE)
+        return ArrayList(maxRequestsPerConnection)
     }
 
 }

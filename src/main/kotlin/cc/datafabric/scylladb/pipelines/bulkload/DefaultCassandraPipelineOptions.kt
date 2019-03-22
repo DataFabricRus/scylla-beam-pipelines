@@ -6,4 +6,5 @@ interface DefaultCassandraPipelineOptions : PipelineOptions {
     var hosts: String
     var port: Int
     var keyspace: String
+    var maxRequestsPerConnection: Int
 }

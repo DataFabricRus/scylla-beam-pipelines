@@ -11,6 +11,7 @@ import org.apache.beam.sdk.transforms.ParDo
 import org.apache.beam.sdk.values.KV
 import org.apache.beam.sdk.values.PCollection
 import org.apache.beam.sdk.values.PDone
+import org.eclipse.rdf4j.model.Literal
 import org.eclipse.rdf4j.model.Model
 import org.eclipse.rdf4j.model.Statement
 import org.eclipse.rdf4j.sail.elasticsearch.ElasticsearchDocument
@@ -47,7 +48,9 @@ class ModelToElasticsearchIndex(
         @ProcessElement
         fun processElement(@Element model: Model, receiver: OutputReceiver<KV<String, Statement>>) {
             model.forEach {
-                receiver.output(KV.of(it.subject.stringValue(), it))
+                if(it.`object` is Literal) {
+                    receiver.output(KV.of(it.subject.stringValue(), it))
+                }
             }
         }
 

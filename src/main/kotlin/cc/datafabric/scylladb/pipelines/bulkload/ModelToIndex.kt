@@ -23,7 +23,12 @@ import java.util.Arrays
 import java.util.Collections
 import java.util.Objects
 
-class ModelToIndex(private val hosts: List<String>, private val port: Int, private val keyspace: String) {
+class ModelToIndex(
+    private val hosts: List<String>,
+    private val port: Int,
+    private val keyspace: String,
+    private val maxRequestsPerConnection: Int
+) {
 
     companion object {
 
@@ -37,7 +42,7 @@ class ModelToIndex(private val hosts: List<String>, private val port: Int, priva
         return object : PTransform<PCollection<Model>, PDone>() {
             override fun expand(input: PCollection<Model>): PDone {
 
-                input.apply(ParDo.of(SPOCIndexDoFn(hosts, port, keyspace)))
+                input.apply(ParDo.of(SPOCIndexDoFn(hosts, port, keyspace, maxRequestsPerConnection)))
 
                 return PDone.`in`(input.pipeline)
             }
@@ -48,7 +53,7 @@ class ModelToIndex(private val hosts: List<String>, private val port: Int, priva
         return object : PTransform<PCollection<Model>, PDone>() {
             override fun expand(input: PCollection<Model>): PDone {
 
-                input.apply(ParDo.of(POSCIndexDoFn(hosts, port, keyspace)))
+                input.apply(ParDo.of(POSCIndexDoFn(hosts, port, keyspace, maxRequestsPerConnection)))
 
                 return PDone.`in`(input.pipeline)
             }
@@ -59,7 +64,7 @@ class ModelToIndex(private val hosts: List<String>, private val port: Int, priva
         return object : PTransform<PCollection<Model>, PDone>() {
             override fun expand(input: PCollection<Model>): PDone {
 
-                input.apply(ParDo.of(OSPCIndexDoFn(hosts, port, keyspace)))
+                input.apply(ParDo.of(OSPCIndexDoFn(hosts, port, keyspace, maxRequestsPerConnection)))
 
                 return PDone.`in`(input.pipeline)
             }
@@ -70,7 +75,7 @@ class ModelToIndex(private val hosts: List<String>, private val port: Int, priva
         return object : PTransform<PCollection<Model>, PDone>() {
             override fun expand(input: PCollection<Model>): PDone {
 
-                input.apply(ParDo.of(CSPOIndexDoFn(hosts, port, keyspace)))
+                input.apply(ParDo.of(CSPOIndexDoFn(hosts, port, keyspace, maxRequestsPerConnection)))
 
                 return PDone.`in`(input.pipeline)
             }
@@ -81,7 +86,7 @@ class ModelToIndex(private val hosts: List<String>, private val port: Int, priva
         return object : PTransform<PCollection<Model>, PDone>() {
             override fun expand(input: PCollection<Model>): PDone {
 
-                input.apply(ParDo.of(CPOSIndexDoFn(hosts, port, keyspace)))
+                input.apply(ParDo.of(CPOSIndexDoFn(hosts, port, keyspace, maxRequestsPerConnection)))
 
                 return PDone.`in`(input.pipeline)
             }
@@ -92,7 +97,7 @@ class ModelToIndex(private val hosts: List<String>, private val port: Int, priva
         return object : PTransform<PCollection<Model>, PDone>() {
             override fun expand(input: PCollection<Model>): PDone {
 
-                input.apply(ParDo.of(COSPIndexDoFn(hosts, port, keyspace)))
+                input.apply(ParDo.of(COSPIndexDoFn(hosts, port, keyspace, maxRequestsPerConnection)))
 
                 return PDone.`in`(input.pipeline)
             }
@@ -104,18 +109,18 @@ class ModelToIndex(private val hosts: List<String>, private val port: Int, priva
             override fun expand(input: PCollection<Model>): PDone {
 
                 input
-                    .apply(ParDo.of(STATIndexToKV(hosts, port, keyspace)))
+                    .apply(ParDo.of(STATIndexToKV(hosts, port, keyspace, maxRequestsPerConnection)))
                     .setCoder(KvCoder.of(CardKeyCoder(), VarLongCoder.of()))
                     .apply(Sum.longsPerKey())
-                    .apply(ParDo.of(STATIndexWriterDoFn(hosts, port, keyspace)))
+                    .apply(ParDo.of(STATIndexWriterDoFn(hosts, port, keyspace, maxRequestsPerConnection)))
 
                 return PDone.`in`(input.pipeline)
             }
         }
     }
 
-    class SPOCIndexDoFn(hosts: List<String>, port: Int, keyspace: String)
-        : AbstractCassandraExecutor<Model, Boolean>(hosts, port, keyspace) {
+    class SPOCIndexDoFn(hosts: List<String>, port: Int, keyspace: String, maxRequestsPerConnection: Int)
+        : AbstractCassandraExecutor<Model, Boolean>(hosts, port, keyspace, maxRequestsPerConnection) {
 
         @ProcessElement
         public fun processElement(@Element element: Model) {
@@ -127,8 +132,8 @@ class ModelToIndex(private val hosts: List<String>, private val port: Int, priva
         }
     }
 
-    class POSCIndexDoFn(hosts: List<String>, port: Int, keyspace: String)
-        : AbstractCassandraExecutor<Model, Boolean>(hosts, port, keyspace) {
+    class POSCIndexDoFn(hosts: List<String>, port: Int, keyspace: String, maxRequestsPerConnection: Int)
+        : AbstractCassandraExecutor<Model, Boolean>(hosts, port, keyspace, maxRequestsPerConnection) {
 
         @ProcessElement
         public fun processElement(@Element element: Model) {
@@ -140,8 +145,8 @@ class ModelToIndex(private val hosts: List<String>, private val port: Int, priva
         }
     }
 
-    class OSPCIndexDoFn(hosts: List<String>, port: Int, keyspace: String)
-        : AbstractCassandraExecutor<Model, Boolean>(hosts, port, keyspace) {
+    class OSPCIndexDoFn(hosts: List<String>, port: Int, keyspace: String, maxRequestsPerConnection: Int)
+        : AbstractCassandraExecutor<Model, Boolean>(hosts, port, keyspace, maxRequestsPerConnection) {
 
         @ProcessElement
         public fun processElement(@Element element: Model) {
@@ -153,8 +158,8 @@ class ModelToIndex(private val hosts: List<String>, private val port: Int, priva
         }
     }
 
-    class CSPOIndexDoFn(hosts: List<String>, port: Int, keyspace: String)
-        : AbstractCassandraExecutor<Model, Boolean>(hosts, port, keyspace) {
+    class CSPOIndexDoFn(hosts: List<String>, port: Int, keyspace: String, maxRequestsPerConnection: Int)
+        : AbstractCassandraExecutor<Model, Boolean>(hosts, port, keyspace, maxRequestsPerConnection) {
 
         @ProcessElement
         public fun processElement(@Element element: Model) {
@@ -168,8 +173,8 @@ class ModelToIndex(private val hosts: List<String>, private val port: Int, priva
         }
     }
 
-    class CPOSIndexDoFn(hosts: List<String>, port: Int, keyspace: String)
-        : AbstractCassandraExecutor<Model, Boolean>(hosts, port, keyspace) {
+    class CPOSIndexDoFn(hosts: List<String>, port: Int, keyspace: String, maxRequestsPerConnection: Int)
+        : AbstractCassandraExecutor<Model, Boolean>(hosts, port, keyspace, maxRequestsPerConnection) {
 
         @ProcessElement
         public fun processElement(@Element element: Model) {
@@ -183,8 +188,8 @@ class ModelToIndex(private val hosts: List<String>, private val port: Int, priva
         }
     }
 
-    class COSPIndexDoFn(hosts: List<String>, port: Int, keyspace: String)
-        : AbstractCassandraExecutor<Model, Boolean>(hosts, port, keyspace) {
+    class COSPIndexDoFn(hosts: List<String>, port: Int, keyspace: String, maxRequestsPerConnection: Int)
+        : AbstractCassandraExecutor<Model, Boolean>(hosts, port, keyspace, maxRequestsPerConnection) {
 
         @ProcessElement
         public fun processElement(@Element element: Model) {
@@ -198,8 +203,8 @@ class ModelToIndex(private val hosts: List<String>, private val port: Int, priva
         }
     }
 
-    class STATIndexToKV(hosts: List<String>, port: Int, keyspace: String)
-        : AbstractCassandraExecutor<Model, KV<CardKey, Long>>(hosts, port, keyspace) {
+    class STATIndexToKV(hosts: List<String>, port: Int, keyspace: String, maxRequestsPerConnection: Int)
+        : AbstractCassandraExecutor<Model, KV<CardKey, Long>>(hosts, port, keyspace, maxRequestsPerConnection) {
 
         @ProcessElement
         public fun processElement(@Element element: Model, receiver: OutputReceiver<KV<CardKey, Long>>) {
@@ -217,8 +222,8 @@ class ModelToIndex(private val hosts: List<String>, private val port: Int, priva
 
     }
 
-    class STATIndexWriterDoFn(hosts: List<String>, port: Int, keyspace: String)
-        : AbstractCassandraExecutor<KV<CardKey, Long>, Boolean>(hosts, port, keyspace) {
+    class STATIndexWriterDoFn(hosts: List<String>, port: Int, keyspace: String, maxRequestsPerConnection: Int)
+        : AbstractCassandraExecutor<KV<CardKey, Long>, Boolean>(hosts, port, keyspace, maxRequestsPerConnection) {
 
         @ProcessElement
         public fun processElement(@Element element: KV<CardKey, Long>) {

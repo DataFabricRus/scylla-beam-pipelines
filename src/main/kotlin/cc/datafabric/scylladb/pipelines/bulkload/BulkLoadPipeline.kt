@@ -12,6 +12,7 @@ import org.eclipse.rdf4j.rio.RDFFormat
 interface BulkLoadPipelineOptions : DefaultCassandraPipelineOptions, DefaultElasticsearchPipelineOptions {
     var source: String
     var batchSize: Long
+    var skipFullTextIndex: Boolean
 }
 
 object BulkLoadPipeline {
@@ -24,7 +25,11 @@ object BulkLoadPipeline {
         p.coderRegistry.registerCoderForClass(RDFFormat::class.java, RDF4JRDFFormatCoder.of())
         p.coderRegistry.registerCoderForClass(Model::class.java, RDF4JModelCoder.of())
 
-        val modelToIndex = ModelToIndex(options.hosts.split(HOSTS_SEPARATOR), options.port, options.keyspace)
+        val modelToIndex = ModelToIndex(
+            options.hosts.split(HOSTS_SEPARATOR),
+            options.port,
+            options.keyspace,
+            options.maxRequestsPerConnection)
 
         val models = p
             .apply(Create.of(options.source))
@@ -44,9 +49,11 @@ object BulkLoadPipeline {
 
         models.apply("Write STAT Indexes", modelToIndex.toSTAT())
 
-        models.apply("Write Elasticsearch Index", ModelToElasticsearchIndex(
-            options.elasticsearchHost, options.elasticsearchBatchSize
-        ))
+        if (!options.skipFullTextIndex) {
+            models.apply("Write Elasticsearch Index", ModelToElasticsearchIndex(
+                options.elasticsearchHost, options.elasticsearchBatchSize
+            ))
+        }
 
         return p
     }
