@@ -95,8 +95,7 @@ class ModelToElasticsearchIndex(
 
             for (entry in documents) {
                 val doc = ElasticsearchDocument(
-                    SearchFields.formIdString(Objects.requireNonNull(entry.key),
-                        null),
+                    SearchFields.formIdString(Objects.requireNonNull(entry.key), null),
                     ElasticsearchIndex.DEFAULT_DOCUMENT_TYPE,
                     ElasticsearchIndex.DEFAULT_INDEX_NAME,
                     entry.key,

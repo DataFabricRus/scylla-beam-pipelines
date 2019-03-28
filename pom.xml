@@ -5,15 +5,20 @@
     <modelVersion>4.0.0</modelVersion>
 
     <groupId>cc.datafabric</groupId>
-    <artifactId>scylladb-pipelines</artifactId>
+    <artifactId>scylla-rdf-pipelines</artifactId>
     <version>0.0.1-SNAPSHOT</version>
 
     <properties>
-        <apache.beam.version>2.10.0</apache.beam.version>
-        <rdf4j.version>2.5.0</rdf4j.version>
+        <apache.beam.version>2.11.0</apache.beam.version>
+        <rdf4j.version>3.0-SNAPSHOT</rdf4j.version>
         <slf4j.version>1.7.25</slf4j.version>
+
+        <!-- Kotlin -->
         <kotlin.version>1.3.21</kotlin.version>
         <kotlin.compiler.incremental>true</kotlin.compiler.incremental>
+        <kotlin.compiler.languageVersion>1.3</kotlin.compiler.languageVersion>
+        <kotlin.compiler.apiVersion>1.3</kotlin.compiler.apiVersion>
+        <kotlin.compiler.jvmTarget>1.8</kotlin.compiler.jvmTarget>
     </properties>
 
     <dependencies>

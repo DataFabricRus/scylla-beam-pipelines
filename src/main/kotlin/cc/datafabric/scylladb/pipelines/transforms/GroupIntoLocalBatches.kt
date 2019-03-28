@@ -38,7 +38,7 @@ class GroupIntoLocalBatches<T> private constructor(private val batchSize: Long)
                     val outputBatch = batch
                     batch = newBatch()
 
-                    receiver.outputWithTimestamp(outputBatch, Instant.now())
+                    receiver.output(outputBatch)
                 }
             }
 
