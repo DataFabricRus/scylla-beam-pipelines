@@ -61,9 +61,9 @@ object RDF4JIO {
             fun processElement(@Element filePattern: String, mor: DoFn.MultiOutputReceiver) {
                 val format = Rio.getParserFormatForFileName(filePattern)
 
-                LOG.info("{} is in {}", filePattern, format.get().name)
-
                 if (format.isPresent) {
+                    LOG.info("{} is in {}", filePattern, format.get().name)
+
                     val f = format.get()
                     if (f == RDFFormat.NTRIPLES) {
                         mor.get(LINE_BASED).output(filePattern)
@@ -71,6 +71,8 @@ object RDF4JIO {
                         mor.get(FILE_BASED).output(filePattern)
                     }
                 } else {
+                    LOG.info("{} is in unknown format. Putting it in the file-based branch", filePattern)
+
                     mor.get(FILE_BASED).output(filePattern)
                 }
             }
