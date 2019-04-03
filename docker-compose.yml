@@ -4,7 +4,7 @@ services:
     build: ./
     image: datafabricrus/scylla-rdf-pipelines:0.0.1
     environment:
-      - SCYLLA_RDF_STORAGE_HOSTS=scylla # E.g. 10.0.0.1,10.0.0.1
+      - SCYLLA_HOSTS=scylla # E.g. 10.0.0.1,10.0.0.1
     volumes:
       - "./upload:/upload"
     command: ./run_bulkload_flink.sh --source=/upload/* # E.g. --source=/upload/file.ttl,/upload/folder1/file.nt

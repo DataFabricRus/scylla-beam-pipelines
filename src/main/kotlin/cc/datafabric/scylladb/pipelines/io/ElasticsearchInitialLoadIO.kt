@@ -1,6 +1,7 @@
-package cc.datafabric.scylladb.pipelines.bulkload
+package cc.datafabric.scylladb.pipelines.io
 
 import cc.datafabric.scylladb.pipelines.coders.RDF4JStatementCoder
+import cc.datafabric.scylladb.pipelines.elasticsearch.ModifiedElasticsearchIndex
 import cc.datafabric.scylladb.pipelines.transforms.GroupIntoLocalBatches
 import org.apache.beam.sdk.coders.KvCoder
 import org.apache.beam.sdk.coders.StringUtf8Coder
@@ -16,20 +17,19 @@ import org.eclipse.rdf4j.model.Model
 import org.eclipse.rdf4j.model.Statement
 import org.eclipse.rdf4j.sail.elasticsearch.ElasticsearchDocument
 import org.eclipse.rdf4j.sail.elasticsearch.ElasticsearchIndex
-import org.eclipse.rdf4j.sail.lucene.BulkUpdater
 import org.eclipse.rdf4j.sail.lucene.SearchFields
 import org.slf4j.LoggerFactory
 import java.io.IOException
 import java.util.Objects
 import java.util.Properties
 
-class ModelToElasticsearchIndex(
+class ElasticsearchInitialLoadIO(
     private val elasticsearchHost: String,
     private val batchSize: Long
 ) : PTransform<PCollection<Model>, PDone>() {
 
     companion object {
-        private val LOG = LoggerFactory.getLogger(ModelToElasticsearchIndex::class.java)
+        private val LOG = LoggerFactory.getLogger(ElasticsearchInitialLoadIO::class.java)
     }
 
     override fun expand(input: PCollection<Model>): PDone {
@@ -48,7 +48,7 @@ class ModelToElasticsearchIndex(
         @ProcessElement
         fun processElement(@Element model: Model, receiver: OutputReceiver<KV<String, Statement>>) {
             model.forEach {
-                if(it.`object` is Literal) {
+                if (it.`object` is Literal) {
                     receiver.output(KV.of(it.subject.stringValue(), it))
                 }
             }
@@ -59,7 +59,7 @@ class ModelToElasticsearchIndex(
     private inner class WriteToElasticsearchIndex
         : DoFn<Iterable<@JvmSuppressWildcards KV<String, Iterable<@JvmSuppressWildcards Statement>>>, Boolean>() {
 
-        private lateinit var index: OpenElasticsearchIndex
+        private lateinit var index: ModifiedElasticsearchIndex
 
         @Setup
         @Throws(Exception::class)
@@ -72,7 +72,7 @@ class ModelToElasticsearchIndex(
             val properties = Properties()
             properties.setProperty(ElasticsearchIndex.TRANSPORT_KEY, elasticsearchHost)
 
-            index = OpenElasticsearchIndex()
+            index = ModifiedElasticsearchIndex()
             index.initialize(properties)
 
             LOG.info("Connected to Elasticsearch on {}", elasticsearchHost)
@@ -95,7 +95,8 @@ class ModelToElasticsearchIndex(
 
             for (entry in documents) {
                 val doc = ElasticsearchDocument(
-                    SearchFields.formIdString(Objects.requireNonNull(entry.key), null),
+                    SearchFields.formIdString(Objects.requireNonNull(entry.key),
+                        null),
                     ElasticsearchIndex.DEFAULT_DOCUMENT_TYPE,
                     ElasticsearchIndex.DEFAULT_INDEX_NAME,
                     entry.key,
@@ -117,14 +118,6 @@ class ModelToElasticsearchIndex(
             receiver.output(true)
 
             LOG.info("Wrote a batch in {} ms", System.currentTimeMillis() - start)
-        }
-
-    }
-
-    private class OpenElasticsearchIndex : ElasticsearchIndex() {
-
-        public override fun newBulkUpdate(): BulkUpdater {
-            return super.newBulkUpdate()
         }
 
     }

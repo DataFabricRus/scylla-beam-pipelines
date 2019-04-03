@@ -1,4 +1,4 @@
-package cc.datafabric.scylladb.pipelines.bulkload
+package cc.datafabric.scylladb.pipelines.io
 
 import cc.datafabric.scyllardf.coder.CoderFacade
 import cc.datafabric.scyllardf.dao.ICardinalityDAO
@@ -7,10 +7,10 @@ import cc.datafabric.scyllardf.dao.impl.ScyllaRDFDAOFactory
 import com.datastax.driver.core.HostDistance
 import com.datastax.driver.core.PoolingOptions
 import com.datastax.driver.core.ResultSetFuture
-import com.google.common.util.concurrent.Futures
 import org.apache.beam.sdk.transforms.DoFn
 import org.slf4j.LoggerFactory
 import java.net.InetAddress
+import java.util.concurrent.atomic.AtomicInteger
 
 open class AbstractCassandraExecutor<InputT, OutputT>(
     private val hosts: List<String>,
@@ -21,9 +21,13 @@ open class AbstractCassandraExecutor<InputT, OutputT>(
 
     companion object {
         private val LOG = LoggerFactory.getLogger(AbstractCassandraExecutor::class.java)
+
+        private val numExecutors = AtomicInteger(0)
+
+        private lateinit var daoFactory: ScyllaRDFDAOFactory
+        private lateinit var coderFactory: CoderFacade
     }
 
-    private lateinit var daoFactory: ScyllaRDFDAOFactory
     protected lateinit var cardinalityDao: ICardinalityDAO
     protected lateinit var indexDAO: IIndexDAO
     protected lateinit var coder: CoderFacade
@@ -32,12 +36,23 @@ open class AbstractCassandraExecutor<InputT, OutputT>(
 
     @Setup
     public open fun setup() {
-        daoFactory = ScyllaRDFDAOFactory.create(hosts.map { InetAddress.getByName(it) }, port, keyspace, PoolingOptions()
-            .setMaxRequestsPerConnection(HostDistance.LOCAL, maxRequestsPerConnection)
-        )
+        synchronized(AbstractCassandraExecutor::class.java) {
+            if (numExecutors.getAndIncrement() == 0) {
+                daoFactory = ScyllaRDFDAOFactory.create(
+                    hosts.map { InetAddress.getByName(it) },
+                    port,
+                    keyspace,
+                    PoolingOptions()
+                        .setMaxConnectionsPerHost(HostDistance.LOCAL, 2)
+                        .setMaxRequestsPerConnection(HostDistance.LOCAL, maxRequestsPerConnection)
+                )
 
-        coder = CoderFacade
-        coder.initialize(daoFactory.getDictionaryDAO())
+                coderFactory = CoderFacade
+                coderFactory.initialize(daoFactory.getDictionaryDAO())
+            }
+        }
+
+        coder = coderFactory
 
         cardinalityDao = daoFactory.getCardinalityDAO()
         indexDAO = daoFactory.getIndexDAO()
@@ -50,7 +65,11 @@ open class AbstractCassandraExecutor<InputT, OutputT>(
 
     @Teardown
     public fun tearDown() {
-        daoFactory.close()
+        synchronized(AbstractCassandraExecutor::class.java) {
+            if (numExecutors.decrementAndGet() == 0) {
+                daoFactory.close()
+            }
+        }
     }
 
     protected fun batch(future: ResultSetFuture) {
@@ -67,14 +86,24 @@ open class AbstractCassandraExecutor<InputT, OutputT>(
 
     private fun checkBatchSize() {
         if (batch.size > maxRequestsPerConnection) {
-            Futures.allAsList(batch).get()
+            val start = System.currentTimeMillis()
 
-            batch = newBatch()
+            batch.forEach {
+                try {
+                    it.getUninterruptibly()
+                } catch (t: Throwable) {
+                    LOG.warn(t.message, t)
+                }
+            }
+
+            batch.clear()
+
+            LOG.info("Batch completed in {} ms", System.currentTimeMillis() - start)
         }
     }
 
     private fun newBatch(): MutableList<ResultSetFuture> {
-        return ArrayList(maxRequestsPerConnection)
+        return ArrayList(maxRequestsPerConnection + maxRequestsPerConnection / 10)
     }
 
 }

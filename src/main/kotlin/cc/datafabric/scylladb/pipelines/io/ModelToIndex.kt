@@ -1,4 +1,4 @@
-package cc.datafabric.scylladb.pipelines.bulkload
+package cc.datafabric.scylladb.pipelines.io
 
 import cc.datafabric.scyllardf.dao.ScyllaRDFSchema
 import org.apache.beam.sdk.coders.ByteArrayCoder
@@ -35,6 +35,10 @@ class ModelToIndex(
         private const val CARD_C_ID: Byte = 0
         private const val CARD_P_ID: Byte = 1
         private const val CARD_PO_ID: Byte = 2
+
+    }
+
+    fun initialize() {
 
     }
 
@@ -104,7 +108,7 @@ class ModelToIndex(
         }
     }
 
-    fun toSTAT(): PTransform<PCollection<Model>, PDone> {
+    fun toCARD(): PTransform<PCollection<Model>, PDone> {
         return object : PTransform<PCollection<Model>, PDone>() {
             override fun expand(input: PCollection<Model>): PDone {
 

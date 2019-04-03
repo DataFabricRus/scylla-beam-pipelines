@@ -2,17 +2,18 @@ package cc.datafabric.scylladb.pipelines.bulkload
 
 import cc.datafabric.scylladb.pipelines.coders.RDF4JModelCoder
 import cc.datafabric.scylladb.pipelines.coders.RDF4JRDFFormatCoder
+import cc.datafabric.scylladb.pipelines.io.ModelToIndex
 import cc.datafabric.scylladb.pipelines.io.RDF4JIO
 import org.apache.beam.sdk.Pipeline
 import org.apache.beam.sdk.options.PipelineOptionsFactory
 import org.apache.beam.sdk.transforms.Create
 import org.eclipse.rdf4j.model.Model
 import org.eclipse.rdf4j.rio.RDFFormat
+import org.slf4j.LoggerFactory
 
-interface BulkLoadPipelineOptions : DefaultCassandraPipelineOptions, DefaultElasticsearchPipelineOptions {
+interface BulkLoadPipelineOptions : DefaultCassandraPipelineOptions {
     var source: String
     var batchSize: Long
-    var skipFullTextIndex: Boolean
 }
 
 object BulkLoadPipeline {
@@ -47,13 +48,7 @@ object BulkLoadPipeline {
 
         models.apply("Write COSP Index", modelToIndex.toCOSP())
 
-        models.apply("Write STAT Indexes", modelToIndex.toSTAT())
-
-        if (!options.skipFullTextIndex) {
-            models.apply("Write Elasticsearch Index", ModelToElasticsearchIndex(
-                options.elasticsearchHost, options.elasticsearchBatchSize
-            ))
-        }
+        models.apply("Write CARD Indexes", modelToIndex.toCARD())
 
         return p
     }
@@ -62,6 +57,7 @@ object BulkLoadPipeline {
     public fun main(args: Array<String>) {
         val options = PipelineOptionsFactory
             .fromArgs(*args)
+            .withValidation()
             .`as`(BulkLoadPipelineOptions::class.java)
 
 //        options.jobName = "scylladb-bulkload"
