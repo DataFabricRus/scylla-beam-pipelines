@@ -2,6 +2,7 @@ package cc.datafabric.scylladb.pipelines.io
 
 import cc.datafabric.scylladb.pipelines.coders.RDF4JStatementCoder
 import cc.datafabric.scylladb.pipelines.elasticsearch.ModifiedElasticsearchIndex
+import cc.datafabric.scylladb.pipelines.transforms.FilterStatements
 import cc.datafabric.scylladb.pipelines.transforms.GroupIntoLocalBatches
 import org.apache.beam.sdk.coders.KvCoder
 import org.apache.beam.sdk.coders.StringUtf8Coder
@@ -25,7 +26,8 @@ import java.util.Properties
 
 class ElasticsearchInitialLoadIO(
     private val elasticsearchHost: String,
-    private val batchSize: Long
+    private val batchSize: Long,
+    private val properties: Array<String>?
 ) : PTransform<PCollection<Model>, PDone>() {
 
     companion object {
@@ -34,26 +36,13 @@ class ElasticsearchInitialLoadIO(
 
     override fun expand(input: PCollection<Model>): PDone {
         input
-            .apply(ParDo.of(ModelToSubjectStatements()))
+            .apply(FilterStatements.filterAndGroupBySubject(properties))
             .setCoder(KvCoder.of(StringUtf8Coder.of(), RDF4JStatementCoder.of()))
             .apply(GroupByKey.create())
             .apply(GroupIntoLocalBatches.of(batchSize))
             .apply(ParDo.of(WriteToElasticsearchIndex()))
 
         return PDone.`in`(input.pipeline)
-    }
-
-    private class ModelToSubjectStatements : DoFn<Model, KV<String, Statement>>() {
-
-        @ProcessElement
-        fun processElement(@Element model: Model, receiver: OutputReceiver<KV<String, Statement>>) {
-            model.forEach {
-                if (it.`object` is Literal) {
-                    receiver.output(KV.of(it.subject.stringValue(), it))
-                }
-            }
-        }
-
     }
 
     private inner class WriteToElasticsearchIndex

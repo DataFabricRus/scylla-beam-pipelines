@@ -6,6 +6,9 @@
         </encoder>
     </appender>
 
+    <logger name="org.apache.flink.runtime" level="WARN"/>
+    <logger name="org.apache.flink.metrics.MetricGroup" level="ERROR"/>
+    <logger name="org.apache.beam.runners" level="WARN"/>
     <logger name="cc.datafabric" level="DEBUG"/>
 
     <root level="INFO">

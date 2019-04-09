@@ -455,7 +455,7 @@ class ModifiedElasticsearchIndex : AbstractSearchIndex() {
         } else {
             hits = search(request, qb)
         }
-        return Iterables.transform(hits) { hit -> ElasticsearchDocumentScore(hit, geoContextMapper) }
+        return Iterables.transform(hits) { hit -> ElasticsearchDocumentScore(hit, geoContextMapper) }!!
     }
 
     // /**

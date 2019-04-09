@@ -2,6 +2,7 @@ package cc.datafabric.scylladb.pipelines.io
 
 import cc.datafabric.scylladb.pipelines.coders.RDF4JStatementCoder
 import cc.datafabric.scylladb.pipelines.elasticsearch.ModifiedElasticsearchIndex
+import cc.datafabric.scylladb.pipelines.transforms.FilterStatements
 import cc.datafabric.scylladb.pipelines.transforms.GroupIntoLocalBatches
 import org.apache.beam.sdk.transforms.DoFn
 import org.apache.beam.sdk.transforms.PTransform
@@ -18,36 +19,24 @@ import org.slf4j.LoggerFactory
 import java.io.IOException
 import java.util.Properties
 
-class ElasticsearchPartualUpdateIO(
+class ElasticsearchPartialUpdateIO(
     private val elasticsearchHost: String,
-    private val batchSize: Long
+    private val batchSize: Long,
+    private val properties: Array<String>?
 ) : PTransform<PCollection<Model>, PDone>() {
 
     companion object {
-        private val LOG = LoggerFactory.getLogger(ElasticsearchPartualUpdateIO::class.java)
+        private val LOG = LoggerFactory.getLogger(ElasticsearchPartialUpdateIO::class.java)
     }
 
     override fun expand(input: PCollection<Model>): PDone {
         input
-            .apply(ParDo.of(ModelToSubjectStatements()))
+            .apply(FilterStatements.filter(properties))
             .setCoder(RDF4JStatementCoder.of())
             .apply(GroupIntoLocalBatches.of(batchSize))
             .apply(ParDo.of(WriteToElasticsearchIndex()))
 
         return PDone.`in`(input.pipeline)
-    }
-
-    private class ModelToSubjectStatements : DoFn<Model, Statement>() {
-
-        @ProcessElement
-        fun processElement(@Element model: Model, receiver: OutputReceiver<Statement>) {
-            model.forEach {
-                if(it.`object` is Literal) {
-                    receiver.output(it)
-                }
-            }
-        }
-
     }
 
     private inner class WriteToElasticsearchIndex : DoFn<Iterable<@JvmSuppressWildcards Statement>, Boolean>() {
