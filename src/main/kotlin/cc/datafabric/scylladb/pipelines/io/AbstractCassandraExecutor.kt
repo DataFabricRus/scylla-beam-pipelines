@@ -1,6 +1,7 @@
 package cc.datafabric.scylladb.pipelines.io
 
 import cc.datafabric.scyllardf.coder.CoderFacade
+import cc.datafabric.scyllardf.coder.ICoderFacade
 import cc.datafabric.scyllardf.dao.ICardinalityDAO
 import cc.datafabric.scyllardf.dao.IIndexDAO
 import cc.datafabric.scyllardf.dao.impl.ScyllaRDFDAOFactory
@@ -24,13 +25,13 @@ open class AbstractCassandraExecutor<InputT, OutputT>(
 
         private val numExecutors = AtomicInteger(0)
 
+        @Volatile
         private lateinit var daoFactory: ScyllaRDFDAOFactory
-        private lateinit var coderFactory: CoderFacade
     }
 
+    protected lateinit var coder: ICoderFacade
     protected lateinit var cardinalityDao: ICardinalityDAO
     protected lateinit var indexDAO: IIndexDAO
-    protected lateinit var coder: CoderFacade
 
     private var batch = newBatch()
 
@@ -46,13 +47,11 @@ open class AbstractCassandraExecutor<InputT, OutputT>(
                         .setMaxConnectionsPerHost(HostDistance.LOCAL, 2)
                         .setMaxRequestsPerConnection(HostDistance.LOCAL, maxRequestsPerConnection)
                 )
-
-                coderFactory = CoderFacade
-                coderFactory.initialize(daoFactory.getDictionaryDAO())
             }
         }
 
-        coder = coderFactory
+        coder = CoderFacade()
+        (coder as CoderFacade).initialize(daoFactory.getDictionaryDAO())
 
         cardinalityDao = daoFactory.getCardinalityDAO()
         indexDAO = daoFactory.getIndexDAO()
